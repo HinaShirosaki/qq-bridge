@@ -7,7 +7,24 @@ export const name = 'qq-tool-restrict'
 
 export const inject = ['tools']
 
+const V2_HIDDEN_TOOLS = [
+  'mcp__snowluma-host__snowluma_status',
+  'mcp__snowluma-host__start_snowluma',
+  'mcp__snowluma-host__stop_snowluma',
+  'mcp__snowluma__qq_status',
+  'mcp__snowluma__qq_list_groups',
+  'mcp__snowluma__qq_get_group_history',
+  // qq_send_message covers both and is what the persona asks for.
+  'mcp__snowluma__qq_send_group_message',
+  'mcp__snowluma__qq_send_private_message',
+]
+
 const KNOWN_DANGEROUS_GLOBAL_TOOLS = [
+  // Already rejected by the execution guard; hide their unused schemas too.
+  'skillhub_install',
+  'skillhub_list',
+  'skillhub_search',
+  'skillhub_uninstall',
   // dsh-super-injector / 开发注入器（当前 DSH 0.1.1-rc.2 实际注册的全局工具）
   'dev_build_plugin',
   'dev_clear_routes',
@@ -32,13 +49,15 @@ const KNOWN_DANGEROUS_GLOBAL_TOOLS = [
   'dev_stage_list',
   'dev_stage_promote',
   'dev_uninject_plugin',
+  // Unused or unsafe in reserved2: process control, a tool reserved2 rejects, and a raw
+  // OneBot history dump (qq_get_recent_messages covers it). Also rejected by the guard below.
+  ...V2_HIDDEN_TOOLS,
 ]
 
 // 执行期白名单：不在这些范围内的工具一律拒绝。
 // 前缀覆盖 DSH MCP client 暴露的命名空间工具。
 const SAFE_PREFIXES = [
   'mcp__snowluma__',
-  'mcp__snowluma-host__',
   'mcp__web-search-safe__',
 ]
 
@@ -67,6 +86,7 @@ export function apply(ctx) {
   ctx.tools.guard((exec) => {
     const name = exec?.name
     if (typeof name !== 'string' || name.length === 0) return
+    if (V2_HIDDEN_TOOLS.includes(name)) return `工具 "${name}" 在二代仿真模式中不可用`
     if (SAFE_EXACT.has(name)) return
     if (SAFE_PREFIXES.some((prefix) => name.startsWith(prefix))) return
     return `工具 "${name}" 不在 QQ 桥接白名单内，已拒绝（仅允许 QQ MCP 工具与无害模型侧工具）`

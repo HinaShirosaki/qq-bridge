@@ -1,0 +1,405 @@
+--- a/dsh/agent-presets/qq-chat-v2/agent.cordis.yml
++++ b/dsh/agent-presets/qq-chat-v2/agent.cordis.yml
+@@ -212,6 +212,20 @@
+   config:
+     - id: compaction-basic
+       name: '@deepseek-ai/dsh-compaction-basic'
++      config:
++        # Bound chat history on the deployed 1M-token model, without changing wake timing.
++        # Leave other models on DSH defaults; these keys are validated in rc.7.
++        modelPolicies:
++          - provider: deepseek-vision
++            model: deepseek-flash
++            thresholdRatio: 0.08
++            retainTokens: 16000
++            maxTokens: 2048
++          - provider: deepseek-official
++            model: deepseek-flash
++            thresholdRatio: 0.08
++            retainTokens: 16000
++            maxTokens: 2048
+ 
+     - id: command-compact
+       name: '@deepseek-ai/dsh-command-compact'
+--- a/dsh/agent-presets/qq-chat-v2/qq-tool-restrict.mjs
++++ b/dsh/agent-presets/qq-chat-v2/qq-tool-restrict.mjs
+@@ -8,6 +8,11 @@
+ export const inject = ['tools']
+ 
+ const KNOWN_DANGEROUS_GLOBAL_TOOLS = [
++  // Already rejected by the execution guard; hide their unused schemas too.
++  'skillhub_install',
++  'skillhub_list',
++  'skillhub_search',
++  'skillhub_uninstall',
+   // dsh-super-injector / 开发注入器（当前 DSH 0.1.1-rc.2 实际注册的全局工具）
+   'dev_build_plugin',
+   'dev_clear_routes',
+--- a/src/bridge/config.js
++++ b/src/bridge/config.js
+@@ -24,6 +24,7 @@
+   if (!file || typeof file !== 'object' || Array.isArray(file)) throw new Error(`配置格式错误：${p}`);
+   const cfg = {
+     replyBackend: file.replyBackend ?? 'dsh',
++    tokenOptimization: { compactWakePrompt: true, compactToolResults: true, ...(file.tokenOptimization ?? {}) },
+     dsh: {
+       baseUrl: 'http://127.0.0.1:3080',
+       provider: 'deepseek-official',
+--- a/src/mcp/chat-tools.js
++++ b/src/mcp/chat-tools.js
+@@ -8,7 +8,7 @@
+       const login = await onebot('get_login_info');
+       let status = {};
+       try { status = await onebot('get_status'); } catch {}
+-      return { content: [{ type: 'text', text: JSON.stringify({ ...login, online: status.online, good: status.good }, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify({ ...login, online: status.online, good: status.good }) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `查询失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -36,7 +36,7 @@
+       const list = (Array.isArray(data) ? data : (data?.data ?? []))
+           .filter((g) => isAllowed(a.allowGroups, a.denyGroups, g.group_id, a.allowAllWhenEmpty))
+           .map((g) => ({ group_id: g.group_id, group_name: g.group_name }));
+-      return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(list) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `查询失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -59,7 +59,7 @@
+     try {
+       const data = await onebot('get_group_member_list', { group_id: Number(g) });
+       const list = (Array.isArray(data) ? data : (data?.data ?? [])).map((m) => ({ user_id: m.user_id, nickname: m.nickname, card: m.card }));
+-      return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(list) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `查询失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -83,7 +83,7 @@
+       const params = { group_id: Number(g) };
+       if (messageSeq !== undefined) params.message_seq = messageSeq;
+       const data = await onebot('get_group_msg_history', params);
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `查询失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -106,7 +106,7 @@
+         method: 'POST',
+         body: JSON.stringify({ groupId: String(groupId), message: cleanMessage, replyToMessageId, token: token || undefined })
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `发送失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -129,7 +129,7 @@
+         method: 'POST',
+         body: JSON.stringify({ groupId: String(groupId), replyToMessageId, message: cleanMessage, token: token || undefined })
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `发送失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -152,7 +152,7 @@
+         method: 'POST',
+         body: JSON.stringify({ userId: String(userId), message: cleanMessage, replyToMessageId, token: token || undefined })
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `发送失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -167,7 +167,7 @@
+   async ({ key, token }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/prompt?key=${encodeURIComponent(key)}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取提示词失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -181,7 +181,7 @@
+   async ({ key, token, limit }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/unread?key=${encodeURIComponent(key)}&limit=${limit ?? 30}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取未读消息失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -200,7 +200,7 @@
+   async ({ key, token, limit, offset }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/recent?key=${encodeURIComponent(key)}&limit=${limit ?? 20}&offset=${offset ?? 0}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取最近消息失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -214,7 +214,7 @@
+   async ({ key, token }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/state?key=${encodeURIComponent(key)}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取状态失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -228,7 +228,7 @@
+   async ({ key, token }) => {
+     try {
+       const data = await agentApi('/api/socialV2/mark-read', { method: 'POST', body: JSON.stringify({ key }), headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `标记已读失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -262,7 +262,7 @@
+   async ({ key, token, config }) => {
+     try {
+       const data = await agentApi('/api/socialV2/wake-config', { method: 'POST', body: JSON.stringify({ key, config }), headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `设置唤醒配置失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -304,7 +304,7 @@
+         headers: { 'x-agent-token': token },
+         timeoutMs: 300000
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `分条发送失败：${error?.message ?? error}` }], isError: true };
+     }
+--- a/src/mcp/media-tools.js
++++ b/src/mcp/media-tools.js
+@@ -60,7 +60,7 @@
+         if (count != null) q.set('count', String(count));
+         if (refresh) q.set('refresh', '1');
+         const data = await agentApi(`/api/socialV2/sticker-list?${q.toString()}`, { headers: { 'x-agent-token': token } });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `获取表情列表失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -115,7 +115,7 @@
+           headers: { 'x-agent-token': token },
+           timeoutMs: 300000
+         });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `发送表情失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -141,7 +141,7 @@
+           headers: { 'x-agent-token': token },
+           timeoutMs: 60000
+         });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `收藏表情失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -200,7 +200,7 @@
+           body: JSON.stringify(payload),
+           headers: { 'x-agent-token': token }
+         });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `记录表情备注失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -225,7 +225,7 @@
+           body: JSON.stringify({ key, stickerId: String(stickerId), remark: String(remark || '') }),
+           headers: { 'x-agent-token': token }
+         });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `修改表情备注失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -250,7 +250,7 @@
+           headers: { 'x-agent-token': token },
+           timeoutMs: 120000
+         });
+-        const content = [{ type: 'text', text: JSON.stringify(data, null, 2) }];
++        const content = [{ type: 'text', text: JSON.stringify(data) }];
+         // 收集所有层级的图片/表情元数据（含嵌套预览），最多返回 5 张。
+         const images = [];
+         const seen = new Set();
+--- a/src/mcp/social-tools.js
++++ b/src/mcp/social-tools.js
+@@ -38,7 +38,7 @@
+         headers: { 'x-agent-token': token },
+         timeoutMs: 300000
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `发送失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -62,7 +62,7 @@
+           headers: { 'x-agent-token': token },
+           timeoutMs: 60000
+         });
+-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++        return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+       } catch (error) {
+         return { content: [{ type: 'text', text: `拍一拍失败：${error?.message ?? error}` }], isError: true };
+       }
+@@ -88,7 +88,7 @@
+         headers: { 'x-agent-token': token },
+         timeoutMs: Math.min(725000, (Number(timeoutMs) || 30000) + Math.max(Number(quietMs) || 0, 10000) + 20000)
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `等待失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -111,7 +111,7 @@
+         body: JSON.stringify({ key, level, message }),
+         headers: { 'x-agent-token': token }
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `反馈失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -129,7 +129,7 @@
+   async ({ key, token, limit }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/my-recent?key=${encodeURIComponent(key)}&limit=${limit ?? 10}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取自己消息失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -147,7 +147,7 @@
+   async ({ key, token, messageId }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/message-detail?key=${encodeURIComponent(key)}&messageId=${encodeURIComponent(String(messageId))}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取消息详情失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -165,7 +165,7 @@
+   async ({ key, token, limit }) => {
+     try {
+       const data = await agentApi(`/api/socialV2/active-members?key=${encodeURIComponent(key)}&limit=${limit ?? 10}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `获取活跃成员失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -195,7 +195,7 @@
+         body: JSON.stringify({ key, category, content, extra: extra || {} }),
+         headers: { 'x-agent-token': token }
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `记忆写入失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -215,7 +215,7 @@
+       const q = new URLSearchParams({ key });
+       if (category) q.set('category', category);
+       const data = await agentApi(`/api/socialV2/memory?${q.toString()}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `记忆读取失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -239,7 +239,7 @@
+         body: JSON.stringify({ key, category, content: content || '', target: target || '' }),
+         headers: { 'x-agent-token': token }
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `记忆删除失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -261,7 +261,7 @@
+         body: JSON.stringify({ key, category: category || '' }),
+         headers: { 'x-agent-token': token }
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `记忆清空失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -280,7 +280,7 @@
+     try {
+       const query = q ? `&q=${encodeURIComponent(String(q))}` : '';
+       const data = await agentApi(`/api/socialV2/slang/query?key=${encodeURIComponent(key)}${query}`, { headers: { 'x-agent-token': token } });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `查询黑话失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -303,7 +303,7 @@
+         body: JSON.stringify({ key, content, context: context || '' }),
+         headers: { 'x-agent-token': token }
+       });
+-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
++      return { content: [{ type: 'text', text: JSON.stringify(data) }] };
+     } catch (error) {
+       return { content: [{ type: 'text', text: `提交黑话失败：${error?.message ?? error}` }], isError: true };
+     }
+@@ -311,3 +311,15 @@
+ );
+ 
+ }
++
++// Keep console/API responses intact; only the model-facing MCP view is compacted.
++export function compactAgentResponse(requestPath, data) {
++  if (!data || typeof data !== 'object' || data.ok === false) return data;
++  const pathname = requestPath.split('?')[0];
++  if (pathname === '/api/socialV2/mark-read') {
++    // Confirmation is enough; qq_social_state still exposes the full config.
++    const { wakeConfig, wakeSafety, ...confirmation } = data;
++    return confirmation;
++  }
++  return data;
++}
+--- a/src/mcp-snowluma-safe.js
++++ b/src/mcp-snowluma-safe.js
+@@ -14,7 +14,7 @@
+ import { z } from 'zod';
+ import { SENSITIVE_RE } from './sensitive.js';
+ import { registerChatTools } from './mcp/chat-tools.js';
+-import { registerSocialTools } from './mcp/social-tools.js';
++import { registerSocialTools, compactAgentResponse } from './mcp/social-tools.js';
+ import { registerSnowLumaMediaTools } from './mcp/media-tools.js';
+ 
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+@@ -154,7 +154,7 @@
+   if (!res.ok) {
+     throw new Error(body?.error || `桥接 API HTTP ${res.status}`);
+   }
+-  return body;
++  return cfg.tokenOptimization?.compactToolResults === false ? body : compactAgentResponse(path, body);
+ }
+ 
+ async function authorizeRead(key, token) {
+--- a/src/social/wake-triggers.js
++++ b/src/social/wake-triggers.js
+@@ -192,7 +192,15 @@
+     if (wcTr.anyMessage) wcTriggers.push('任意消息');
+     if (Number(wcTr.probability) > 0) wcTriggers.push(`概率${wcTr.probability}`);
+     const wakeLine = `【当前唤醒】${wcMode}，${wcTime}${wcTriggers.length ? `；触发：${wcTriggers.join('/')}` : ''}\n\n`;
+-    const base = roleLine + tokenLine + antiAiLine + proactiveLine + stickerLine + preSleepLine + statusLine + wakeLine + memoryLine + participationLine;
++    const compact = bridgeContext.cfg.tokenOptimization?.compactWakePrompt !== false;
++    // Persona/tool instructions stay in the preset; each wake carries changing state.
++    const compactRules = `【行动】像群友自然参与，不必有求必应；想发言用发送工具。潜水前按现有规则先等待 ${preSleepMs}ms；若返回 preSleepWaitRemainingMs，等够剩余时间。收到新消息先判断是否参与，参与回复后下次潜水重新观察。\n\n`;
++    const compactStickers = stickerCfg.enabled !== false && stickerCfg.includeInPrompt !== false
++      ? `【表情】合适时用 qq_send_sticker，一张一气泡，文字另发；不确定先看图，不刷屏。\n${buildStickerContext(bridgeContext.stickerEntries, stickerCfg.promptMaxStickers ?? 8)}\n\n`
++      : '';
++    const base = compact
++      ? roleLine + tokenLine + compactRules + compactStickers + statusLine + wakeLine + memoryLine + participationLine
++      : roleLine + tokenLine + antiAiLine + proactiveLine + stickerLine + preSleepLine + statusLine + wakeLine + memoryLine + participationLine;
+     if (reason === 'bootstrap') {
+       return `${base}【引导唤醒】你已接入 QQ 会话 ${key}。\n当前是二代仿真模式：你的文本输出不会自动发送到 QQ，所有发言必须通过工具完成。\n请先调用 qq_get_prompt 查看你的角色、推荐值、可用工具和当前状态，然后用 qq_set_wake_config 设置你希望如何被唤醒。`;
+     }

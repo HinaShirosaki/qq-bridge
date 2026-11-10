@@ -19,8 +19,12 @@ import { StringDecoder } from 'node:string_decoder';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { htmlToText } from './safe-fetch.js';
 
 const dnsLookup = dns.promises.lookup;
+// Read enough raw HTML to get past <head>, but hand the model at most TEXT_MAX_CHARS of text.
+const RAW_MAX_CHARS = 300000;
+const TEXT_MAX_CHARS = 8000;
 
 function sanitizeQuery(query) {
   return String(query ?? '')
@@ -276,7 +280,7 @@ function requestOnce(url, ip) {
         resolve({ statusCode, redirect: String(res.headers.location || '') });
         return;
       }
-      readBoundedText(res, 50000)
+      readBoundedText(res, RAW_MAX_CHARS)
         .then((body) => resolve({ statusCode, body }))
         .catch(reject);
     });
@@ -297,13 +301,13 @@ async function safeFetch(urlString) {
       ({ url, ip } = await validateFetchUrl(next));
       continue;
     }
-    const maxChars = 50000;
-    const body = result.body || '';
+    const raw = result.body || '';
+    const text = htmlToText(raw);
     return {
       url: url.toString(),
       statusCode: result.statusCode,
-      truncated: body.length >= maxChars,
-      body,
+      truncated: raw.length >= RAW_MAX_CHARS || text.length > TEXT_MAX_CHARS,
+      body: sliceByCodePoints(text, TEXT_MAX_CHARS),
     };
   }
   throw new Error('重定向次数过多，已停止');
@@ -322,7 +326,7 @@ server.tool(
     }
     try {
       const result = await bingSearch(clean);
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (error) {
       return {
         content: [{ type: 'text', text: `搜索失败：${error?.message ?? error}` }],
@@ -334,12 +338,12 @@ server.tool(
 
 server.tool(
   'web_fetch',
-  '只读抓取 HTTP(S) 网页正文，返回纯文本/HTML 前 50000 字符。禁止访问内网/本机地址，不执行任何本地操作。',
+  '只读抓取 HTTP(S) 网页正文，返回去掉标签/脚本后的纯文本前 8000 字符。禁止访问内网/本机地址，不执行任何本地操作。',
   { url: z.string().describe('要抓取的 http(s) URL') },
   async ({ url }) => {
     try {
       const result = await safeFetch(url);
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (error) {
       return {
         content: [{ type: 'text', text: `抓取失败：${error?.message ?? error}` }],

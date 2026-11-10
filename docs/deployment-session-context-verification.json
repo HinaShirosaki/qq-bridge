@@ -1,0 +1,72 @@
+{
+  "deployment": {
+    "status": "deployed",
+    "verifiedUtc": "2026-11-09T21:06:37.106969+00:00",
+    "filesHashVerified": 16,
+    "installedPresetsMatch": true,
+    "statusEndpoint": {
+      "mode": "reserved2",
+      "replyBackend": "dsh",
+      "dshReady": true,
+      "socialV2Paused": false
+    },
+    "services": {
+      "qq-bridge.service": {
+        "MainPID": "1910867",
+        "NRestarts": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Tue 2026-11-10 05:06:31 CST"
+      },
+      "deepseek-harness.service": {
+        "MainPID": "1910824",
+        "NRestarts": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Tue 2026-11-10 05:06:27 CST"
+      }
+    },
+    "existingSessionsPreserved": true,
+    "configRoleAndModeUnchanged": true,
+    "testQQMessagesSent": 0,
+    "forcedModelRequests": 0
+  },
+  "runtimeDryRun": {
+    "kind": "deployed-module dry run with live config and role/sticker/slang stores",
+    "reuseSessionContext": true,
+    "firstCharacters": 4091,
+    "repeatedCharacters": 87,
+    "unchangedSectionsOmitted": true,
+    "modelRequests": 0,
+    "QQMessagesSent": 0
+  },
+  "observation": {
+    "startupJournals": {
+      "qq-bridge.service": {
+        "lines": 18,
+        "errorMatches": 0
+      },
+      "deepseek-harness.service": {
+        "lines": 8,
+        "errorMatches": 0
+      }
+    },
+    "naturalTraffic": [
+      {
+        "kind": "private",
+        "naturalPromptsAfterCutover": 0,
+        "recentPromptShapes": [],
+        "updatedPersonaHeaderObserved": false
+      },
+      {
+        "kind": "group",
+        "naturalPromptsAfterCutover": 0,
+        "recentPromptShapes": [],
+        "updatedPersonaHeaderObserved": false
+      }
+    ],
+    "forcedModelRequests": 0,
+    "testQQMessagesSent": 0
+  },
+  "remoteDirectory": "/home/ubuntu/QQ/qq-bridge/state/deployments/20261109-session-context/"
+}

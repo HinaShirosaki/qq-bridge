@@ -1,0 +1,75 @@
+{
+  "deployment": {
+    "status": "deployed",
+    "verifiedUtc": "2026-11-10T01:43:15.921134+00:00",
+    "filesHashVerified": 12,
+    "installedPresetsMatch": true,
+    "statusEndpoint": {
+      "mode": "reserved2",
+      "replyBackend": "dsh",
+      "dshReady": true,
+      "socialV2Paused": false
+    },
+    "services": {
+      "qq-bridge.service": {
+        "MainPID": "1990390",
+        "NRestarts": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Tue 2026-11-10 09:43:14 CST"
+      },
+      "deepseek-harness.service": {
+        "MainPID": "1990335",
+        "NRestarts": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "ActiveEnterTimestamp": "Tue 2026-11-10 09:43:11 CST"
+      }
+    },
+    "existingSessionsPreserved": true,
+    "configRoleAndModeUnchanged": true,
+    "testQQMessagesSent": 0,
+    "forcedModelRequests": 0
+  },
+  "stagedRuntimeDryRun": {
+    "kind": "isolated deployed-module dry run with live config and role/sticker/slang stores",
+    "phase": "staged",
+    "reuseSessionContext": true,
+    "firstCharacters": 4347,
+    "repeatedCharacters": 122,
+    "unchangedSectionsOmitted": true,
+    "tokenRotationVerified": true,
+    "contextRecoveryVerified": true,
+    "modelRequests": 0,
+    "QQMessagesSent": 0
+  },
+  "deployedRuntimeDryRun": {
+    "kind": "isolated deployed-module dry run with live config and role/sticker/slang stores",
+    "phase": "deployed",
+    "reuseSessionContext": true,
+    "firstCharacters": 4347,
+    "repeatedCharacters": 122,
+    "unchangedSectionsOmitted": true,
+    "tokenRotationVerified": true,
+    "contextRecoveryVerified": true,
+    "modelRequests": 0,
+    "QQMessagesSent": 0
+  },
+  "postcheck": {
+    "verifiedUtc": "2026-11-10T01:43:56.439346+00:00",
+    "journals": {
+      "qq-bridge.service": {
+        "linesSinceCutover": 17,
+        "runtimeErrorMatches": 0
+      },
+      "deepseek-harness.service": {
+        "linesSinceCutover": 56,
+        "runtimeErrorMatches": 0
+      }
+    },
+    "forcedModelRequests": 0,
+    "testQQMessagesSent": 0
+  },
+  "remoteDirectory": "/home/ubuntu/QQ/qq-bridge/state/deployments/20261110-wake-payload/",
+  "liveTokenSavingsMeasured": false
+}

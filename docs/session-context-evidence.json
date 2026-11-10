@@ -1,0 +1,32 @@
+{
+  "source": "synthetic fixtures; no server transcript or billed token measurement",
+  "characters": {
+    "v2InitialContextAndWake": 4505,
+    "v2RoutineWake": 332,
+    "v2PreviousCompactWake": 803,
+    "ordinaryPreviousWithCard": 3535,
+    "ordinaryRoutine": 75
+  },
+  "refreshEveryAcceptedPrompts": 16,
+  "checks": [
+    "initial card",
+    "all wake reasons",
+    "section changes and deletion",
+    "same-name card edits",
+    "token rotation",
+    "new session",
+    "compaction",
+    "periodic refresh",
+    "refused and failed submissions",
+    "in-flight invalidation",
+    "preparation without submission",
+    "images",
+    "concurrent queue",
+    "offline queue",
+    "restart",
+    "media failure",
+    "ordinary chat",
+    "rollback",
+    "Codex fallback"
+  ]
+}

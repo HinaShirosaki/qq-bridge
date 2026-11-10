@@ -233,6 +233,27 @@ export async function safeFetch(urlString, maxChars = 50000) {
   throw new Error('重定向次数过多，已停止');
 }
 
+// Pages reach the model as text: tags, scripts and CSS are noise, and every character of a
+// tool result is replayed on each later model step until compaction. Non-HTML passes through.
+export function htmlToText(html) {
+  const s = String(html ?? '');
+  if (!/<(!doctype|html|head|body|div|p|span|a)\b/i.test(s)) return s;
+  const decode = (t) => t
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => (Number(n) <= 0x10ffff ? String.fromCodePoint(Number(n)) : ' '))
+    .replace(/&amp;/g, '&');
+  const title = decode(s.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').replace(/\s+/g, ' ').trim();
+  const text = decode(s
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|template|head)\b[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<(br|\/p|\/div|\/li|\/h[1-6]|\/tr)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' '))
+    .replace(/[ \t\f\v\r]+/g, ' ')
+    .replace(/ *\n\s*/g, '\n')
+    .trim();
+  return title ? `${title}\n${text}` : text;
+}
+
 /** 仅接受 DSH 支持的四种图片格式：PNG/JPEG/GIF/WebP。 */
 export function looksLikeImageBuffer(buf) {
   if (!buf || buf.length < 12) return false;

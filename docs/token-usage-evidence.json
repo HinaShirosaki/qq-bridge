@@ -1,0 +1,61 @@
+{
+  "source": "Read-only SSH inspection of deployed QQ Bridge and DSH JSONL session logs; no raw chat text retained.",
+  "recorded_group_end_utc": "2026-11-09T02:50:51.918Z",
+  "group_all": {
+    "turns": 1762,
+    "model_steps": 6207,
+    "uncached_input_tokens": 6331004,
+    "cached_input_tokens": 3302287744,
+    "output_tokens": 687369,
+    "compactions": 7
+  },
+  "group_last100": {
+    "turns": 100,
+    "model_steps": 334,
+    "uncached_input_tokens": 219191,
+    "cached_input_tokens": 223549952,
+    "output_tokens": 32423,
+    "total_input_per_step_median": 666747,
+    "total_input_per_step_max": 788699,
+    "turns_without_send_tool": 88,
+    "wait_calls": 151,
+    "mark_read_calls": 63,
+    "send_message_calls": 17,
+    "prompt_chars_median": 1830.5
+  },
+  "private_last100": {
+    "turns": 100,
+    "model_steps": 197,
+    "uncached_input_tokens": 148363,
+    "cached_input_tokens": 67880576,
+    "output_tokens": 9566,
+    "proactive_wakes": 97,
+    "reminders": 2,
+    "other_wakes": 1,
+    "mark_read_calls": 97,
+    "send_message_calls": 1
+  },
+  "slang_all": {
+    "sessions": 9,
+    "turns": 793,
+    "model_steps": 788,
+    "uncached_input_tokens": 654002,
+    "cached_input_tokens": 114592256,
+    "output_tokens": 108260
+  },
+  "header": {
+    "system_chars": 15908,
+    "tool_schema_chars": 29833,
+    "tool_count": 44
+  },
+  "live": {
+    "backend": "dsh",
+    "provider": "deepseek-vision",
+    "model": "deepseek-flash",
+    "reasoning": "low",
+    "context_window": 1000000,
+    "compaction_default_threshold_ratio": 0.8,
+    "compaction_default_retain_ratio": 0.16
+  },
+  "accounting": "Verified installed dsh-llm-deepseek mapUsage: inputTokens excludes cacheReadTokens. Total prompt tokens = inputTokens + cacheReadTokens. outputTokens includes reasoningTokens; do not add reasoning again."
+}

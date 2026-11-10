@@ -56,11 +56,15 @@
     "maxReplyChars": 500,
     "mustReplyKeywords": [
       "deepseek",
+      "初音未来",
+      "初音",
+      "miku",
+      "葱葱",
+      "d指导",
+      "在吗",
       "小鲸鱼",
       "大肥鱼",
-      "鲸鱼",
-      "d指导",
-      "在吗"
+      "鲸鱼"
     ],
     "contextWindow": 20,
     "triggerProbability": 0.1,
@@ -135,7 +139,12 @@
       "recommendedSleepMaxMs": 7200000,
       "recommendedProbability": 0.05,
       "recommendedKeywords": [
-        "小鲸鱼",
+        "初音未来",
+        "初音",
+        "Miku",
+        "miku",
+        "ミク",
+        "葱葱",
         "DeepSeek",
         "deepseek",
         "DS",
@@ -146,11 +155,12 @@
         "D师傅",
         "d师傅",
         "深度求索",
-        "大肥鱼",
-        "鲸鱼",
         "DeepSeek V3",
         "DeepSeek R1",
-        "R1"
+        "R1",
+        "小鲸鱼",
+        "大肥鱼",
+        "鲸鱼"
       ],
       "recommendedAtMention": true,
       "recommendedNameMention": true,

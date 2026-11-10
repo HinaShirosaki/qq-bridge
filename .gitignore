@@ -27,3 +27,4 @@ config.json
 /scripts/patch-qq-chat-v2-presleep.mjs
 /scripts/patch-qq-chat-v2-stickers.mjs
 /scripts/patch-web-mcp-timeout.mjs
+.DS_Store

@@ -1,0 +1,38 @@
+{
+  "source": "synthetic fixtures; no server transcript or billed token measurement",
+  "characters": {
+    "v2InitialContextAndWake": 4449,
+    "v2RoutineWake": 91,
+    "v2PreviousCompactWake": 803,
+    "ordinaryPreviousWithCard": 3535,
+    "ordinaryRoutine": 37
+  },
+  "refreshEveryAcceptedPrompts": 16,
+  "checks": [
+    "initial card",
+    "all wake reasons",
+    "no repeated wake scaffolding",
+    "wake settings deltas",
+    "memory deltas and clearing",
+    "safe compact unread boundaries",
+    "compact activity",
+    "stable memory timestamps",
+    "section changes and deletion",
+    "same-name card edits",
+    "token rotation",
+    "new session",
+    "compaction",
+    "periodic refresh",
+    "refused and failed submissions",
+    "in-flight invalidation",
+    "preparation without submission",
+    "images",
+    "concurrent queue",
+    "offline queue",
+    "restart",
+    "media failure",
+    "ordinary chat",
+    "rollback",
+    "Codex fallback"
+  ]
+}
